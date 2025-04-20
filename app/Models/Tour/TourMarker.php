@@ -1,0 +1,15 @@
+<?php
+
+namespace App\Models\Tour;
+
+use Illuminate\Database\Eloquent\Model;
+
+class TourMarker extends Model
+{
+    protected $guarded = [];
+
+    public function node()
+    {
+        return $this->belongsTo(TourNode::class);
+    }
+}

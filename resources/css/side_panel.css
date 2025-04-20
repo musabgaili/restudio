@@ -1,0 +1,46 @@
+
+.panel-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+  }
+
+  .detail-panel {
+    position: fixed;
+    top: 0;
+    right: -50%;
+    width: 50%;
+    height: 100%;
+    background-color: white;
+    z-index: 1001;
+    transition: right 0.3s ease;
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+  }
+
+  .detail-panel.show {
+    right: 0;
+  }
+
+  .panel-header {
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+  }
+
+  .panel-body {
+    padding: 1rem;
+    height: calc(100% - 60px);
+    overflow-y: auto;
+  }
+
+  .media-thumbnail {
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+
+  .media-thumbnail:hover {
+    transform: scale(1.05);
+  }
