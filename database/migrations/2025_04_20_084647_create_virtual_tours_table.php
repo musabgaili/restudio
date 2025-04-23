@@ -16,8 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('slug')->unique();
             $table->text('description')->nullable();
-            $table->nullableMorphs('tourable'); // morph to property/project
-            // $table->foreignId('user_id')->nullable()->constrained()->cascadeOnDelete();
+            $table->nullableMorphs('tourable');
             $table->timestamps();
         });
 
@@ -41,16 +40,28 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('tour_markers', function (Blueprint $table) {
+        // Schema::create('tour_markers', function (Blueprint $table) {
+        //     $table->id();
+        //     $table->foreignId('node_id')->constrained('tour_nodes')->cascadeOnDelete();
+        //     $table->string('tooltip')->nullable();
+        //     $table->string('image_path')->nullable();
+        //     $table->json('gps')->nullable();
+        //     $table->json('size')->nullable();
+        //     $table->string('anchor')->nullable();
+        //     $table->timestamps();
+        // });
+
+        Schema::create('tour_node_markers', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('node_id')->constrained('tour_nodes')->cascadeOnDelete();
-            $table->string('tooltip')->nullable();
-            $table->string('image_path')->nullable();
-            $table->json('gps')->nullable();
-            $table->json('size')->nullable();
-            $table->string('anchor')->nullable();
+            $table->foreignId('tour_node_id')->constrained()->cascadeOnDelete();
+            $table->string('type')->default('link'); // e.g., link/info/etc
+            $table->string('label')->nullable();
+            $table->json('position'); // longitude/latitude or x/y
+            $table->foreignId('target_node_id')->nullable()->constrained('tour_nodes')->nullOnDelete(); // ← important
             $table->timestamps();
         });
+
+
     }
 
     /**

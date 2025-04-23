@@ -1,0 +1,112 @@
+<?php
+
+namespace App\Services\VirtualTour;
+
+use App\Models\Tour\VirtualTour;
+use App\Models\Tour\TourNode;
+use App\Models\Tour\TourLink;
+use App\Models\Tour\TourMarker;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
+class CreateTourService
+{
+    public function createTour(Request $request)
+    {
+        logger($request->all());
+        $tour = VirtualTour::create([
+            'name' => Str::random(5) . uniqid() . now()->millisecond . Str::random(5),
+            'slug' => Str::random(5) . uniqid() . now()->millisecond . Str::random(5),
+            'description' => Str::random(5) . uniqid() . now()->millisecond . Str::random(5)
+        ]);
+
+        $this->createNodes($request, $tour);
+
+        return response()->json(['success' => true, 'tour_id' => $tour->id]);
+    }
+
+    public function createNodes(Request $request, VirtualTour $tour)
+    {
+        // simmple var for later logging all nodes
+        $logNodes = [];
+        $nodes = $request->input('nodes', []);
+        $panoramas = $request->file('panoramas', []);
+
+        foreach ($nodes as $index => $nodeData) {
+            $node = new TourNode([
+                'virtual_tour_id' => $tour->id,
+                'name' => $nodeData['name'],
+                'caption' => $nodeData['caption'] ?? null,
+                'start_node' => $nodeData['start_node'] === 'true',
+                'gps' => json_decode($nodeData['gps'] ?? 'null', true),
+                'sphere_correction' => json_decode($nodeData['sphere_correction'] ?? 'null', true),
+            ]);
+
+            $node->save();
+            $logNodes[] = $node;
+
+            // Attach media
+            if (isset($panoramas[$index])) {
+                $node->addMedia($panoramas[$index])->toMediaCollection('panoramas');
+                // $node->addMedia($panoramas[$index])->toMediaCollection('thumbnails');
+            }
+
+            // $this->createLinks($node, $nodeData['links'] ?? []);
+            // $this->createMarkers($node, $nodeData['markers'] ?? []);
+            $this->createLinks($node, json_decode($nodeData['links'] ?? '[]', true) ?? []);
+            $this->createMarkers($node, json_decode($nodeData['markers'] ?? '[]', true) ?? []);
+        }
+        logger("log Nodes: " .  json_encode($logNodes));
+    }
+
+    public function createLinks(TourNode $node, array $links)
+    {
+        $recievedLinks = $links;
+        // Fix for the TypeError: ensure $links is an array
+        if (!is_array($links)) {
+            logger("Warning: Links data is not an array. Received: " . json_encode($links));
+            // Attempt to decode JSON string to array
+            $decodedLinks = json_decode($links, true);
+            $recievedLinks = is_array($decodedLinks) ? $decodedLinks : [];
+        }
+        foreach ($recievedLinks as $linkData) {
+            TourLink::create([
+                'from_node_id' => $node->id,
+                'to_node_id' => $linkData['to_node_id'],
+                'position' => $linkData['position'] ?? null,
+            ]);
+        }
+    }
+
+    public function createMarkers(TourNode $node, array $markers)
+    {
+        $recievedMarkers = $markers;
+        // Fix for the TypeError: ensure $markers is an array
+        if (!is_array($markers)) {
+            logger("Warning: Markers data is not an array. Received: " . json_encode($markers));
+            // Attempt to decode JSON string to array
+            $decodedMarkers = json_decode($markers, true);
+            $recievedMarkers = is_array($decodedMarkers) ? $decodedMarkers : [];
+        }
+
+        // foreach ($recievedMarkers as $markerData) {
+        //     TourMarker::create(array_merge(
+        //         [
+        //             'node_id' => $node->id,
+        //         ],
+        //         $markerData
+        //     ));
+        // }
+        // Save markers
+        foreach ($nodeData['markers'] ?? [] as $marker) {
+            $node->markers()->create([
+                'type' => $marker['type'] ?? 'link',
+                'label' => $marker['label'] ?? null,
+                'position' => $marker['position'],
+                'target_node_id' => $marker['target_node_id'] ?? null, // ← key part
+            ]);
+        }
+    }
+
+    public function createThumbnails(Request $request) {}
+}

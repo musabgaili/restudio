@@ -13,4 +13,15 @@ class TourLink extends Model
         return $this->belongsTo(TourNode::class, 'from_node_id');
     }
 
+    public function toNode()
+    {
+        return $this->belongsTo(TourNode::class, 'to_node_id');
+    }
+
+    public function virtualTour()
+    {
+        return $this->belongsTo(VirtualTour::class);
+    }
+
+
 }

@@ -62,23 +62,14 @@ function handleSaveTours() {
     images.forEach((img, index) => {
         const node = getNodes().find(n => n.id === img.id);
         const markers = getNodeMarkers(img.id).map(marker => {
-            // Make a deep copy of the marker
-            const updatedMarker = JSON.parse(JSON.stringify(marker));
-
-            // Check if marker has a target node
-            if (updatedMarker.data && updatedMarker.data.targetNodeId) {
-                // Need to find the matching node in our temp_id mapping
-                const targetNodeIndex = images.findIndex(i => i.id === updatedMarker.data.targetNodeId);
-
-                if (targetNodeIndex !== -1) {
-                    // Update targetNodeId to use the node's temp_id (node-X format) which will be mapped in backend
-                    updatedMarker.data.targetNodeId = images[targetNodeIndex].temp_id;
-                    console.log(`Updated marker target from ${marker.data.targetNodeId} to ${updatedMarker.data.targetNodeId}`);
-                } else {
-                    console.error(`Could not find node with id ${updatedMarker.data.targetNodeId}`);
+            // Update marker to use temp_id
+            if (marker.data && marker.data.targetNodeId) {
+                const target = images.find(i => i.temp_id === marker.data.targetNodeId);
+                if (target) {
+                    marker.data.targetNodeId = target.temp_id;
                 }
             }
-            return updatedMarker;
+            return marker;
         });
 
         formData.append(`panoramas[${index}]`, img.file);

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Picker Demo</title>
+    <link rel="stylesheet" href="../css/color-picker.css">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #1a1a1a;
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        h1, h2 {
+            color: #fff;
+        }
+
+        .demo-section {
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .color-display {
+            width: 100%;
+            height: 150px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+
+        .example-box {
+            width: 100%;
+            height: 100px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .code-display {
+            background-color: #333;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Color Picker Demo</h1>
+
+        <div class="demo-section">
+            <h2>Basic Color Picker</h2>
+            <div id="basic-picker"></div>
+            <div class="color-display" id="basic-display">Selected Color</div>
+            <div class="code-display" id="basic-code">const picker = new ColorPicker('basic-picker');</div>
+        </div>
+
+        <div class="demo-section">
+            <h2>Color Picker with Initial Color</h2>
+            <div id="initial-color-picker"></div>
+            <div class="color-display" id="initial-color-display">Initial Color: #3498db</div>
+            <div class="code-display" id="initial-code">const picker = new ColorPicker('initial-color-picker', '#3498db', false);</div>
+        </div>
+
+        <div class="demo-section">
+            <h2>Multiple Color Pickers</h2>
+            <div class="control-grid">
+                <div>
+                    <h3>Background Color</h3>
+                    <div id="bg-color-picker"></div>
+                    <div class="example-box" id="bg-example">Background</div>
+                </div>
+                <div>
+                    <h3>Text Color</h3>
+                    <div id="text-color-picker"></div>
+                    <div class="example-box" id="text-example">Text</div>
+                </div>
+                <div>
+                    <h3>Border Color</h3>
+                    <div id="border-color-picker"></div>
+                    <div class="example-box" id="border-example">Border</div>
+                </div>
+            </div>
+            <div class="code-display">
+                const bgPicker = new ColorPicker('bg-color-picker', '#e74c3c');<br>
+                const textPicker = new ColorPicker('text-color-picker', '#ffffff');<br>
+                const borderPicker = new ColorPicker('border-color-picker', '#3498db');
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/color-picker.js"></script>
+    <script>
+        // Basic color picker
+        const basicPicker = new ColorPicker('basic-picker');
+        const basicDisplay = document.getElementById('basic-display');
+
+        basicPicker.onColorChange((color, isTransparent) => {
+            basicDisplay.style.backgroundColor = isTransparent ? 'transparent' : color;
+            basicDisplay.textContent = isTransparent ? 'Transparent' : color;
+            basicDisplay.style.color = getContrastColor(color);
+        });
+
+        // Picker with initial color
+        const initialPicker = new ColorPicker('initial-color-picker', '#3498db', false);
+        const initialDisplay = document.getElementById('initial-color-display');
+
+        initialPicker.onColorChange((color, isTransparent) => {
+            initialDisplay.style.backgroundColor = isTransparent ? 'transparent' : color;
+            initialDisplay.textContent = isTransparent ? 'Transparent' : color;
+            initialDisplay.style.color = getContrastColor(color);
+        });
+
+        // Multiple pickers
+        const bgPicker = new ColorPicker('bg-color-picker', '#e74c3c');
+        const textPicker = new ColorPicker('text-color-picker', '#ffffff');
+        const borderPicker = new ColorPicker('border-color-picker', '#3498db');
+
+        const bgExample = document.getElementById('bg-example');
+        const textExample = document.getElementById('text-example');
+        const borderExample = document.getElementById('border-example');
+
+        // Update the background example
+        bgPicker.onColorChange((color, isTransparent) => {
+            bgExample.style.backgroundColor = isTransparent ? 'transparent' : color;
+            updateAllExampleBoxes();
+        });
+
+        // Update the text example
+        textPicker.onColorChange((color, isTransparent) => {
+            textExample.style.color = isTransparent ? 'transparent' : color;
+            updateAllExampleBoxes();
+        });
+
+        // Update the border example
+        borderPicker.onColorChange((color, isTransparent) => {
+            borderExample.style.borderColor = isTransparent ? 'transparent' : color;
+            borderExample.style.borderWidth = '3px';
+            borderExample.style.borderStyle = 'solid';
+            updateAllExampleBoxes();
+        });
+
+        // Helper function to update all example boxes
+        function updateAllExampleBoxes() {
+            const bgColor = bgPicker.getColor();
+            const textColor = textPicker.getColor();
+            const borderColor = borderPicker.getColor();
+            const bgTransparent = bgPicker.isTransparent();
+            const textTransparent = textPicker.isTransparent();
+            const borderTransparent = borderPicker.isTransparent();
+
+            // Apply to all example boxes for consistency
+            [bgExample, textExample, borderExample].forEach(el => {
+                el.style.backgroundColor = bgTransparent ? 'transparent' : bgColor;
+                el.style.color = textTransparent ? 'transparent' : textColor;
+                el.style.borderColor = borderTransparent ? 'transparent' : borderColor;
+                el.style.borderWidth = '3px';
+                el.style.borderStyle = 'solid';
+            });
+        }
+
+        // Helper function to determine contrast color
+        function getContrastColor(hexColor) {
+            // If transparent, return white
+            if (!hexColor || hexColor === 'transparent') return '#ffffff';
+
+            // Convert hex to RGB
+            const r = parseInt(hexColor.substr(1, 2), 16);
+            const g = parseInt(hexColor.substr(3, 2), 16);
+            const b = parseInt(hexColor.substr(5, 2), 16);
+
+            // Calculate luminance
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+            // Return black for bright colors, white for dark colors
+            return luminance > 0.5 ? '#000000' : '#ffffff';
+        }
+
+        // Initialize all examples
+        updateAllExampleBoxes();
+    </script>
+</body>
+</html>

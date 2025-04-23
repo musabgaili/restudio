@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Panorama Drawer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/photo-sphere-viewer@4.7.3/dist/photo-sphere-viewer.min.css" rel="stylesheet">
+    <style>
+        body,
+        html {
+            height: 100%;
+            margin: 0;
+        }
+
+        #viewer {
+            width: 100%;
+            height: 100%;
+        }
+
+        .sidebar {
+            height: 100vh;
+            overflow-y: auto;
+            padding: 1rem;
+            border-right: 1px solid #ccc;
+        }
+
+        .preview-img {
+            width: 100%;
+            max-height: 100px;
+            object-fit: cover;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-3 sidebar">
+                <h5>Upload Panorama</h5>
+                <input type="file" id="imageUpload" multiple accept="image/*" class="form-control mb-3">
+                <div id="imageList"></div>
+                <button class="btn btn-primary mt-3" id="addPolygonBtn">Add Random Polygon</button>
+            </div>
+            <div class="col-md-9 p-0">
+                <div id="viewer"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="lorem-content" style="display:none;">Dynamic marker</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/uevent@2.0.0/browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.141.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/photo-sphere-viewer@4.7.3/dist/photo-sphere-viewer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/photo-sphere-viewer@4.7.3/dist/plugins/markers.min.js"></script>
+
+    <script>
+        let PSV;
+        let images = [];
+
+        function initViewer(imageUrl) {
+            if (PSV) PSV.destroy();
+
+            PSV = new PhotoSphereViewer.Viewer({
+                container: document.getElementById('viewer'),
+                panorama: imageUrl,
+                plugins: [PhotoSphereViewer.MarkersPlugin],
+            });
+        }
+
+        function renderImageList() {
+            const imageList = document.getElementById('imageList');
+            imageList.innerHTML = '';
+
+            images.forEach((imgObj, index) => {
+                const img = document.createElement('img');
+                img.src = imgObj.data;
+                img.className = 'preview-img';
+                img.title = imgObj.name;
+                img.onclick = () => initViewer(imgObj.data);
+                imageList.appendChild(img);
+            });
+        }
+
+        document.getElementById('imageUpload').addEventListener('change', function(e) {
+            Array.from(e.target.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    images.push({
+                        name: file.name,
+                        data: evt.target.result
+                    });
+                    renderImageList();
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+
+        document.getElementById('addPolygonBtn').addEventListener('click', () => {
+            if (!PSV) return;
+
+            const markersPlugin = PSV.getPlugin(PhotoSphereViewer.MarkersPlugin);
+            if (!markersPlugin) {
+                console.error('Markers plugin not found!');
+                return;
+            }
+
+            const pos = PSV.getPosition();
+
+            // safe ranges
+            const centerYaw = pos.longitude;
+            const centerPitch = pos.latitude;
+
+            const polygonPoints = [];
+            const numPoints = 6;
+            const radius = 0.05; // small angle for visible polygon
+
+            for (let i = 0; i < numPoints; i++) {
+                const angle = (i / numPoints) * 2 * Math.PI;
+                const yaw = centerYaw + radius * Math.cos(angle);
+                const pitch = centerPitch + radius * Math.sin(angle);
+
+                // Clamp pitch between [-π/2, π/2]
+                const safePitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+
+                polygonPoints.push([yaw, safePitch]);
+            }
+
+            const polygonId = 'polygon-' + Date.now();
+            polygonPoints.forEach(([yaw, pitch], i) => {
+                markersPlugin.addMarker({
+                    id: `pt-${i}-${Date.now()}`,
+                    longitude: yaw,
+                    latitude: pitch,
+                    image: 'https://photo-sphere-viewer-3.netlify.app/assets/pin-red.png',
+                    width: 24,
+                    height: 24,
+                    anchor: 'bottom center',
+                    tooltip: `Point ${i}`
+                });
+            });
+
+            markersPlugin.addMarker({
+                id: polygonId,
+                polygonRad: polygonPoints,
+                svgStyle: {
+                    fill: 'rgba(0, 200, 50, 0.3)',
+                    stroke: 'rgba(0, 150, 0, 1)',
+                    strokeWidth: '2px',
+                },
+                tooltip: 'Polygon: ' + polygonId
+            });
+
+            // Focus camera to polygon center so we see it
+            PSV.animate({
+                longitude: centerYaw,
+                latitude: centerPitch,
+                zoom: 50
+            });
+
+            console.log('Added polygon:', polygonId, polygonPoints);
+        });
+    </script>
+</body>
+
+</html>

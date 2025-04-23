@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\PropertyController;
 use App\Http\Controllers\PropertyMediaController;
+use App\Http\Controllers\VirtualTourController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -23,4 +24,10 @@ Route::prefix('properties')->group(function () {
         Route::post('/virtual-tour', [PropertyMediaController::class, 'addVirtualTourMedia']);
 
     });
+});
+
+Route::post('/virtual-tours', [VirtualTourController::class, 'save']);
+Route::get('/virtual-tours/{id}', [VirtualTourController::class, 'load']);
+Route::post('/virtual-tours/save-polygon', function (Request $request) {
+    return $request->all();
 });

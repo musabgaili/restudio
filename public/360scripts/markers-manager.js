@@ -28,7 +28,7 @@ function setupMarkerPlacement(viewer, markersPlugin) {
         const markerId = 'marker-' + Date.now();
         const currentNodeId = getCurrentNodeId();
 
-        // Create marker data object
+        // New marker data object with correct structure
         const markerData = {
             id: markerId,
             position: {
@@ -41,10 +41,9 @@ function setupMarkerPlacement(viewer, markersPlugin) {
                 height: 32
             },
             anchor: 'bottom center',
-            // tooltip: 'Go to image',
-            tooltip: 'Go to ' + targetSelect.options[targetSelect.selectedIndex].text, // Show destination name
+            tooltip: targetSelect ? 'Go to ' + targetSelect.options[targetSelect.selectedIndex].text : 'Go to image', // Show destination name
             data: {
-                targetNodeId: pendingLinkTarget
+                targetNodeId: pendingLinkTarget // This will be the node-X format
             }
         };
 
@@ -67,6 +66,8 @@ function setupMarkerPlacement(viewer, markersPlugin) {
         // Log for debugging
         console.log('Added marker at position:', { yaw: position.yaw, pitch: position.pitch });
 
+        // Log the marker for debugging
+        console.log('Created marker with target node ID:', pendingLinkTarget);
 
         // Add click event handler for this marker
         markersPlugin.addEventListener('select-marker', (e) => {
