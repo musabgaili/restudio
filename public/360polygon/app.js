@@ -6,7 +6,10 @@ import {
     undoLastAction,
     canUndo,
     clearNodePolygons,
-    clearNodeTexts
+    clearNodeTexts,
+    getNodes,
+    getNodePolygons,
+    getNodeTexts
 } from './nodes-manager.js';
 import { initializeUIHandlers, showNotification } from './ui-manager.js';
 import {
@@ -230,13 +233,63 @@ function handleSaveAll() {
         .catch(error => {
             showNotification('Failed to save data: ' + error.message, 'danger');
         });
+    // Prepare and send data
+    handleSaveTours();
+}
+
+/**
+ * Save polygon and text data to the server
+ */
+function handleSaveTours() {
+    const nodes = getNodes();
+    const payload = {
+        nodes: nodes.map(node => {
+            return {
+                id: node.id,
+                name: node.name,
+                polygons: getNodePolygons(node.id),
+                texts: getNodeTexts(node.id),
+                panorama: node.panorama
+            };
+        })
+    };
+
+    // Log the request payload
+    console.log('Sending payload:', payload);
+
+    // Send request to API
+    fetch('/api/virtual-tours/save-polygon', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify(payload)
+    })
+        .then(response => {
+            console.log('Response:', response);
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Success:', data);
+            showNotification('Data saved successfully!', 'success');
+        })
+        .catch(error => {
+            console.log('Error:', error);
+            console.error('Error:', error);
+            showNotification('Error saving data: ' + error.message, 'danger');
+        });
 }
 
 // Export functions and data that might be needed elsewhere
 export {
     initApp,
     images,
-    getCurrentNodeId
+    getCurrentNodeId,
+    handleSaveTours
 };
 
 // Initialize the app when DOM is ready

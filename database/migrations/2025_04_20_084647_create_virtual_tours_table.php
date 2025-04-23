@@ -25,7 +25,7 @@ return new class extends Migration
             $table->foreignId('virtual_tour_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->string('caption')->nullable();
-            $table->string('panorama_path');
+            $table->string('panorama_path')->nullable();
             $table->string('thumbnail_path')->nullable();
             $table->json('gps')->nullable();
             $table->json('sphere_correction')->nullable();
@@ -37,19 +37,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('from_node_id')->constrained('tour_nodes')->cascadeOnDelete();
             $table->foreignId('to_node_id')->constrained('tour_nodes')->cascadeOnDelete();
+            $table->string('link_type')->default('marker'); // marker, polygon, text
+            $table->foreignId('element_id')->nullable(); // Reference to the specific element (polygon, text, marker) that serves as link
             $table->timestamps();
         });
-
-        // Schema::create('tour_markers', function (Blueprint $table) {
-        //     $table->id();
-        //     $table->foreignId('node_id')->constrained('tour_nodes')->cascadeOnDelete();
-        //     $table->string('tooltip')->nullable();
-        //     $table->string('image_path')->nullable();
-        //     $table->json('gps')->nullable();
-        //     $table->json('size')->nullable();
-        //     $table->string('anchor')->nullable();
-        //     $table->timestamps();
-        // });
 
         Schema::create('tour_node_markers', function (Blueprint $table) {
             $table->id();
@@ -57,11 +48,47 @@ return new class extends Migration
             $table->string('type')->default('link'); // e.g., link/info/etc
             $table->string('label')->nullable();
             $table->json('position'); // longitude/latitude or x/y
-            $table->foreignId('target_node_id')->nullable()->constrained('tour_nodes')->nullOnDelete(); // ← important
+            $table->foreignId('target_node_id')->nullable()->constrained('tour_nodes')->nullOnDelete();
+            $table->boolean('is_link')->default(false); // Whether this marker is a link to another node
+            $table->json('data')->nullable(); // For any additional data
             $table->timestamps();
         });
 
+        // Schema for polygons
+        Schema::create('tour_polygons', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('tour_node_id')->constrained()->cascadeOnDelete();
+            $table->string('client_id')->nullable(); // ID generated on client side
+            $table->json('points'); // Array of coordinates
+            $table->string('color');
+            $table->integer('stroke_width')->default(2);
+            $table->boolean('fill')->default(true);
+            $table->float('opacity')->default(0.5);
+            $table->boolean('is_link')->default(false); // Whether this polygon is a link to another node
+            $table->foreignId('target_node_id')->nullable()->constrained('tour_nodes')->nullOnDelete();
+            $table->json('data')->nullable(); // For any additional data
+            $table->timestamps();
+        });
 
+        // Schema for text elements
+        Schema::create('tour_texts', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('tour_node_id')->constrained()->cascadeOnDelete();
+            $table->string('client_id')->nullable(); // ID generated on client side
+            $table->text('content'); // The text content
+            $table->json('position'); // Position in the panorama
+            $table->string('font_family')->default('Arial');
+            $table->integer('font_size')->default(16);
+            $table->string('font_weight')->default('normal');
+            $table->string('text_color')->default('#ffffff');
+            $table->string('background_color')->nullable();
+            $table->boolean('transparent_background')->default(true);
+            $table->integer('rotation')->default(0);
+            $table->boolean('is_link')->default(false); // Whether this text is a link to another node
+            $table->foreignId('target_node_id')->nullable()->constrained('tour_nodes')->nullOnDelete();
+            $table->json('styles')->nullable(); // Any additional styling
+            $table->timestamps();
+        });
     }
 
     /**
@@ -69,9 +96,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('virtual_tours');
-        Schema::dropIfExists('tour_nodes');
+        Schema::dropIfExists('tour_texts');
+        Schema::dropIfExists('tour_polygons');
+        Schema::dropIfExists('tour_node_markers');
         Schema::dropIfExists('tour_links');
-        Schema::dropIfExists('tour_markers');
+        Schema::dropIfExists('tour_nodes');
+        Schema::dropIfExists('virtual_tours');
     }
 };

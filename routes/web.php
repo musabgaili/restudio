@@ -45,3 +45,13 @@ Route::prefix('/image-drawer')->group(function () {
     Route::get('/', [ImageDrawerController::class, 'index']);
 });
 
+// Studio routes for virtual tours
+Route::prefix('studio')->name('studio.')->group(function () {
+    Route::get('/', [App\Http\Controllers\TourStudioController::class, 'index'])->name('index');
+    Route::get('/create', [App\Http\Controllers\TourStudioController::class, 'create'])->name('create');
+    Route::post('/store', [App\Http\Controllers\TourStudioController::class, 'store'])->name('store');
+    Route::get('/{id}', [App\Http\Controllers\TourStudioController::class, 'show'])->name('show');
+    Route::put('/{id}', [App\Http\Controllers\TourStudioController::class, 'update'])->name('update');
+    Route::delete('/{id}', [App\Http\Controllers\TourStudioController::class, 'destroy'])->name('destroy');
+});
+

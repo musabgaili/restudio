@@ -161,7 +161,7 @@ function savePolygonData(images) {
     });
 
     // Send to server
-    return fetch('/api/polygon-data', {
+    return fetch('/api/virtual-tours/save-polygon', {
         method: 'POST',
         body: formData,
     })

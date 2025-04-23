@@ -29,5 +29,14 @@ Route::prefix('properties')->group(function () {
 Route::post('/virtual-tours', [VirtualTourController::class, 'save']);
 Route::get('/virtual-tours/{id}', [VirtualTourController::class, 'load']);
 Route::post('/virtual-tours/save-polygon', function (Request $request) {
+    logger($request->all());
     return $request->all();
+});
+
+// Studio API routes
+Route::prefix('studio')->group(function () {
+    Route::post('/tours', [App\Http\Controllers\TourStudioController::class, 'store']);
+    Route::get('/tours/{id}/data', [App\Http\Controllers\TourStudioController::class, 'getTourData']);
+    Route::put('/tours/{id}', [App\Http\Controllers\TourStudioController::class, 'update']);
+    Route::delete('/tours/{id}', [App\Http\Controllers\TourStudioController::class, 'destroy']);
 });
