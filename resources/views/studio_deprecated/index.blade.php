@@ -25,7 +25,7 @@
 
         .tour-thumbnail {
             height: 200px;
-            background-color: #a05f5f;
+            background-color: #000;
             background-size: cover;
             background-position: center;
             border-radius: 8px 8px 0 0;
@@ -75,8 +75,8 @@
                 <div class="col-12 col-md-6 col-lg-4 col-xl-3">
                     <div class="card tour-card shadow-sm">
                         <div class="tour-thumbnail">
-                            @if($tour->nodes->isNotEmpty() && $tour->nodes->first()->media->first()->original_url)
-                                <div class="tour-thumbnail" style="background-image: url('{{ $tour->nodes->first()->media->first()->original_url }}')"></div>
+                            @if($tour->nodes->isNotEmpty() && $tour->nodes->first()->thumbnail_path)
+                                <div class="tour-thumbnail" style="background-image: url('{{ Storage::url($tour->nodes->first()->thumbnail_path) }}')"></div>
                             @else
                                 <div class="tour-placeholder">
                                     <i class="fas fa-cube"></i>
@@ -91,14 +91,9 @@
                             <p class="card-text">{{ Str::limit($tour->description, 100) }}</p>
                         </div>
                         <div class="card-footer bg-transparent border-top-0 d-flex justify-content-between">
-                            <div class="d-inline">
-                                <a href="{{ route('studio.show', $tour->id) }}" class="btn btn-outline-primary btn-sm">
-                                    <i class="fas fa-eye me-1"></i> View
-                                </a>
-                                <a href="{{ route('studio.draw', $tour->id) }}" class="btn btn-outline-primary btn-sm">
-                                    <i class="fas fa-pencil-alt me-1"></i> Draw
-                                </a>
-                            </div>
+                            <a href="{{ route('studio.show', $tour->id) }}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-eye me-1"></i> View
+                            </a>
                             <div>
                                 <a href="#" class="btn btn-outline-secondary btn-sm"
                                    onclick="event.preventDefault(); document.getElementById('delete-form-{{ $tour->id }}').submit();">

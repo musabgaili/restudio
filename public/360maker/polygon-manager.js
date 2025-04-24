@@ -62,19 +62,34 @@ function setupManualDrawingHandlers() {
 
             // Add click handler to the overlay instead of the viewer container
             drawOverlay.addEventListener('click', handleViewerClick);
+
+            console.log('Polygon draw overlay created and attached');
+        } else {
+            console.error('Cannot attach polygon draw overlay - viewer container not found');
         }
     }
 
     // Set up Finish Polygon button
     const finishPolygonBtn = document.getElementById('finishPolygonBtn');
     if (finishPolygonBtn) {
-        finishPolygonBtn.addEventListener('click', () => {
-            if (currentDrawingPoints.length >= 3) {
-                finishDrawingPolygon();
-            } else {
-                showNotification('Need at least 3 points to create a polygon', 'warning');
-            }
-        });
+        // Remove existing handlers to avoid duplicates
+        finishPolygonBtn.removeEventListener('click', finishPolygonButtonHandler);
+        finishPolygonBtn.addEventListener('click', finishPolygonButtonHandler);
+        console.log('Finish polygon button handler attached');
+    } else {
+        console.error('Finish polygon button not found');
+    }
+}
+
+/**
+ * Handler for finish polygon button
+ */
+function finishPolygonButtonHandler() {
+    console.log('Finish polygon button clicked, points:', currentDrawingPoints.length);
+    if (currentDrawingPoints.length >= 3) {
+        finishDrawingPolygon();
+    } else {
+        showNotification('Need at least 3 points to create a polygon', 'warning');
     }
 }
 
@@ -209,9 +224,18 @@ function handlePolygonDragEnd() {
  */
 function toggleDrawingMode() {
     isDrawingMode = !isDrawingMode;
+    console.log('Drawing mode toggled:', isDrawingMode);
 
     if (drawOverlay) {
         drawOverlay.style.display = isDrawingMode ? 'block' : 'none';
+        console.log('Draw overlay display:', drawOverlay.style.display);
+    } else {
+        console.error('Draw overlay not initialized');
+        setupManualDrawingHandlers();
+        if (drawOverlay) {
+            drawOverlay.style.display = isDrawingMode ? 'block' : 'none';
+            console.log('Draw overlay created and displayed');
+        }
     }
 
     // Show or hide drawing help overlay
@@ -335,7 +359,10 @@ function drawLineBetweenPoints(point1, point2) {
     const lineId = `temp-line-${tempLineMarkers.length + 1}`;
     const lineMarker = {
         id: lineId,
-        polyline: [point1, point2],
+        polyline: [
+            { position: point1 },
+            { position: point2 }
+        ],
         svgStyle: {
             stroke: 'rgba(255, 255, 255, 0.8)',
             strokeWidth: '2px',
@@ -407,10 +434,15 @@ function finishDrawingPolygon() {
     // Create a unique ID for the polygon
     const polygonId = `polygon-${generateUniqueId()}`;
 
+    // Format points for the polygon
+    const formattedPoints = currentDrawingPoints.map(point => ({
+        position: point
+    }));
+
     // Create polygon data
     const polygonData = {
         id: polygonId,
-        polygon: currentDrawingPoints,
+        polylineRad: formattedPoints,
         svgStyle: {
             fill: fill ? color : 'none',
             stroke: color.replace(/[^,]+\)/, '1)'), // Make stroke fully opaque
@@ -420,6 +452,7 @@ function finishDrawingPolygon() {
         data: {
             type: 'polygon',
             createdAt: new Date().toISOString(),
+            originalPoints: currentDrawingPoints,
             isFilled: fill,
             strokeWidth: strokeWidth,
             isDraggable: true
@@ -466,5 +499,6 @@ export {
     setupPolygonGeneration,
     setupPolygonDragging,
     toggleDrawingMode,
-    finishDrawingPolygon
+    finishDrawingPolygon,
+    currentDrawingPoints
 };

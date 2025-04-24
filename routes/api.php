@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\AppVirtualTourController;
 use App\Http\Controllers\PropertyController;
 use App\Http\Controllers\PropertyMediaController;
+use App\Http\Controllers\Studio\ApiTourController;
 use App\Http\Controllers\VirtualTourController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -26,17 +28,27 @@ Route::prefix('properties')->group(function () {
     });
 });
 
-Route::post('/virtual-tours', [VirtualTourController::class, 'save']);
-Route::get('/virtual-tours/{id}', [VirtualTourController::class, 'load']);
-Route::post('/virtual-tours/save-polygon', function (Request $request) {
-    logger($request->all());
-    return $request->all();
+Route::prefix('/virtual-tours')->group(function () {
+    // Route::get('/', [VirtualTourController::class, 'index']);
+    Route::post('/', [AppVirtualTourController::class, 'save']);
+    Route::get('/{id}', [AppVirtualTourController::class, 'load']);
+
 });
+
+// Route::post('/virtual-tours/save-polygon', function (Request $request) {
+//     logger($request->all());
+//     return $request->all();
+// });
 
 // Studio API routes
 Route::prefix('studio')->group(function () {
     Route::post('/tours', [App\Http\Controllers\TourStudioController::class, 'store']);
-    Route::get('/tours/{id}/data', [App\Http\Controllers\TourStudioController::class, 'getTourData']);
+    Route::get('/tours/{id}/data', [ApiTourController::class, 'getTourData']);
     Route::put('/tours/{id}', [App\Http\Controllers\TourStudioController::class, 'update']);
+    Route::post('/tours/{id}/polygons', [App\Http\Controllers\TourStudioController::class, 'savePolygons']);
     Route::delete('/tours/{id}', [App\Http\Controllers\TourStudioController::class, 'destroy']);
+
+    // Drawing API routes
+    Route::get('/tours/{tourId}/nodes/{nodeId}/drawings', [App\Http\Controllers\Studio\TourDrawController::class, 'getNodeDrawings']);
+    Route::post('/tours/{tourId}/nodes/{nodeId}/drawings', [App\Http\Controllers\Studio\TourDrawController::class, 'saveNodeDrawings']);
 });

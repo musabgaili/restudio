@@ -22,7 +22,9 @@ import {
     isInDrawingMode,
     setupPolygonGeneration,
     setupPolygonDragging,
-    toggleDrawingMode
+    toggleDrawingMode,
+    finishDrawingPolygon,
+    currentDrawingPoints
 } from './polygon-manager.js';
 
 import {
@@ -34,7 +36,9 @@ import {
 import {
     setupMarkerPlacement,
     clearAndRestoreMarkers,
-    setPendingLinkTarget
+    setPendingLinkTarget,
+    startAddingLink,
+    isAddingLink
 } from './markers-manager.js';
 
 // Global app state
@@ -105,8 +109,7 @@ function handleImagesUploaded(uploadedImages) {
 }
 
 /**
- * Setup interactions for the viewer
- * @param {Object} viewer - The photo sphere viewer instance
+ * Set up all interactions for the editor
  */
 function setupInteractions(viewer) {
     const markersPlugin = getMarkersPlugin();
@@ -147,6 +150,54 @@ function setupInteractions(viewer) {
             }
         });
     }
+
+    // Re-create all UI event handlers directly here to be sure they work
+
+    // Draw Polygon button
+    const drawPolygonBtn = document.getElementById('drawPolygonBtn');
+    if (drawPolygonBtn) {
+        drawPolygonBtn.addEventListener('click', () => {
+            console.log('Draw polygon button clicked');
+            if (!getCurrentNodeId()) {
+                showNotification('Please upload and select a panorama first', 'warning');
+                return;
+            }
+            toggleDrawingMode();
+        });
+    }
+
+    // Add Text button
+    const addTextBtn = document.getElementById('addTextBtn');
+    if (addTextBtn) {
+        addTextBtn.addEventListener('click', () => {
+            console.log('Add text button clicked');
+            if (!getCurrentNodeId()) {
+                showNotification('Please upload and select a panorama first', 'warning');
+                return;
+            }
+            toggleTextMode();
+        });
+    }
+
+    // Add Link button
+    const addLinkBtn = document.getElementById('addLinkBtn');
+    if (addLinkBtn) {
+        addLinkBtn.addEventListener('click', handleLinkButtonClick);
+    }
+
+    // Finish polygon button
+    const finishPolygonBtn = document.getElementById('finishPolygonBtn');
+    if (finishPolygonBtn) {
+        finishPolygonBtn.addEventListener('click', () => {
+            if (currentDrawingPoints && currentDrawingPoints.length >= 3) {
+                finishDrawingPolygon();
+            } else {
+                showNotification('Need at least 3 points to create a polygon', 'warning');
+            }
+        });
+    }
+
+    console.log('Interactions set up successfully');
 }
 
 /**
@@ -188,26 +239,70 @@ function handleAddLinkRequest() {
 }
 
 /**
- * Handle confirmation of link target
- * @param {string} targetNodeId - ID of the target node
+ * Handle link button click to show the dropdown
  */
-function handleLinkConfirmed(targetNodeId) {
-    console.log('Link target confirmed:', targetNodeId);
+function handleLinkButtonClick() {
+    console.log('Add link button clicked');
 
-    // Check if the target is the same as current node
-    if (targetNodeId === getCurrentNodeId()) {
-        showNotification('Cannot create a link to the same node.', 'warning');
+    // Get current node ID to exclude it from available targets
+    const currentNodeId = getCurrentNodeId();
+
+    if (!currentNodeId) {
+        showNotification('Please upload and select a panorama first', 'warning');
         return;
     }
 
-    // Start adding link process
-    setPendingLinkTarget(targetNodeId);
+    // Get all available nodes
+    const nodes = getNodes();
+    if (nodes.length <= 1) {
+        showNotification('Need at least 2 panoramas to create links', 'warning');
+        return;
+    }
 
-    // Hide the dropdown
-    document.getElementById('linkDropdown').style.display = 'none';
+    // Populate dropdown with nodes, excluding the current one
+    const targetSelect = document.getElementById('targetSelect');
+    targetSelect.innerHTML = '';
 
-    // Show help overlay
-    document.getElementById('linkHelp').style.display = 'block';
+    nodes.forEach(node => {
+        if (node.id !== currentNodeId) {
+            const option = document.createElement('option');
+            option.value = node.id;
+            option.textContent = node.name || `Node ${node.id.substring(0, 6)}`;
+            targetSelect.appendChild(option);
+        }
+    });
+
+    // Show dropdown
+    const linkDropdown = document.getElementById('linkDropdown');
+    if (linkDropdown) {
+        linkDropdown.style.display = 'block';
+    }
+}
+
+/**
+ * Handle link confirmed
+ * @param {string} targetNodeId - ID of the target node
+ */
+function handleLinkConfirmed(targetNodeId) {
+    console.log('Link confirmed to target:', targetNodeId);
+
+    if (!targetNodeId) {
+        showNotification('Please select a target node', 'warning');
+        return;
+    }
+
+    // Hide dropdown
+    const linkDropdown = document.getElementById('linkDropdown');
+    if (linkDropdown) {
+        linkDropdown.style.display = 'none';
+    }
+
+    // Start adding link
+    if (window.markersManager && typeof window.markersManager.setPendingLinkTarget === 'function') {
+        window.markersManager.setPendingLinkTarget(targetNodeId);
+    } else {
+        startAddingLink(targetNodeId);
+    }
 }
 
 /**
@@ -603,11 +698,130 @@ function formatTextForViewer(text, nodeId) {
     };
 }
 
+/**
+ * Save the entire tour to the server
+ */
+function saveTour() {
+    try {
+        // Get tour data and headers
+        const tourData = prepareTourData();
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        // Disable save button and show loading state
+        const saveButton = document.getElementById('saveAllBtn');
+        const originalButtonText = saveButton.innerHTML;
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
+        saveButton.disabled = true;
+
+        // Send data to server
+        fetch('/studio/store', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify(tourData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Tour saved successfully:', data);
+            showNotification('Tour saved successfully!', 'success');
+
+            // Redirect to view the tour
+            setTimeout(() => {
+                window.location.href = `/studio/${data.id}`;
+            }, 1000);
+        })
+        .catch(error => {
+            console.error('Error saving tour:', error);
+            showNotification('Error saving tour: ' + error.message, 'error');
+
+            // Reset button state
+            saveButton.innerHTML = originalButtonText;
+            saveButton.disabled = false;
+        });
+    } catch (error) {
+        console.error('Error preparing tour data:', error);
+        showNotification('Error preparing tour data: ' + error.message, 'error');
+
+        // Reset button state
+        const saveButton = document.getElementById('saveAllBtn');
+        saveButton.innerHTML = '<i class="fas fa-save me-1"></i> Save Tour';
+        saveButton.disabled = false;
+    }
+}
+
+/**
+ * Prepare the tour data for saving
+ * @returns {Object} The prepared tour data
+ */
+function prepareTourData() {
+    // Get tour details
+    const tourName = document.getElementById('tourName')?.value || 'Untitled Tour';
+    const tourDescription = document.getElementById('tourDescription')?.value || '';
+
+    // Prepare nodes data
+    const nodes = getNodes().map(node => {
+        // Get the corresponding image
+        const img = images.find(img => img.id === node.id);
+
+        // Create node data structure
+        return {
+            id: node.id,
+            name: node.name || (img?.name || `Node ${node.id}`),
+            file: img?.file,
+            url: img?.url,
+            markers: getNodeMarkers(node.id) || [],
+            polygons: getNodePolygons(node.id) || [],
+            texts: getNodeTexts(node.id) || []
+        };
+    });
+
+    // Construct final tour data
+    return {
+        name: tourName,
+        description: tourDescription,
+        nodes: nodes
+    };
+}
+
+/**
+ * Update the color preview element
+ */
+function updateColorPreview() {
+    const colorSelect = document.getElementById('polygonColor');
+    const colorPreview = document.getElementById('currentColorPreview');
+
+    if (colorSelect && colorPreview && window.polygonColors) {
+        const selectedIndex = parseInt(colorSelect.value, 10);
+        const selectedColor = window.polygonColors[selectedIndex];
+        colorPreview.style.backgroundColor = selectedColor;
+    }
+}
+
+/**
+ * Update the stroke width display
+ */
+function updateStrokeWidthDisplay() {
+    const strokeWidthSlider = document.getElementById('strokeWidth');
+    const strokeWidthValue = document.getElementById('strokeWidthValue');
+
+    if (strokeWidthSlider && strokeWidthValue) {
+        strokeWidthValue.textContent = `${strokeWidthSlider.value}px`;
+    }
+}
+
 // Export functions and data that might be needed elsewhere
 export {
     initApp,
     images,
     getCurrentNodeId,
     handleLinkConfirmed,
+    handleLinkButtonClick,
     loadTour
 };

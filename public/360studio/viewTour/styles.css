@@ -1,0 +1,121 @@
+    @import 'https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/core@5/index.css';
+    @import 'https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/virtual-tour-plugin@5/index.css';
+    @import 'https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/gallery-plugin@5/index.css';
+    @import 'https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/markers-plugin@5/index.css';
+
+    html,
+    body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        font-family: 'Segoe UI', sans-serif;
+    }
+
+    .main-container {
+        display: flex;
+        height: calc(100% - 56px); /* Navbar height */
+    }
+
+    #sidebar {
+        width: 280px;
+        background: #f8f9fa;
+        overflow-y: auto;
+        border-right: 1px solid #ddd;
+    }
+
+    #node-list .node-card {
+        position: relative;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        transition: box-shadow 0.3s ease;
+        cursor: pointer;
+        background-color: #fff;
+        margin-bottom: 10px;
+    }
+
+    #node-list .node-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    #node-list .node-img {
+        width: 100%;
+        height: auto;
+        display: block;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    #node-list .node-caption {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: rgba(0, 123, 255, 0.8);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.85rem;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    #node-list .node-card:hover .node-caption {
+        opacity: 1;
+    }
+
+    #viewer {
+        flex: 1;
+        height: 100%;
+    }
+
+    /* Add styles for the marker */
+    .tour-marker {
+        width: 32px;
+        height: 32px;
+        background-color: rgba(61, 153, 255, 0.8);
+        border: 2px solid white;
+        border-radius: 50%;
+        box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
+        cursor: pointer;
+        position: relative;
+        transition: transform 0.3s ease, background-color 0.3s ease;
+        animation: pulse 2s infinite;
+    }
+
+    .tour-marker:hover {
+        transform: scale(1.2);
+        background-color: white;
+        border-color: #3498db;
+        animation: none;
+    }
+
+    .tour-marker::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 10px;
+        height: 10px;
+        border-top: 2px solid white;
+        border-right: 2px solid white;
+        transform: translate(-50%, -50%) rotate(45deg);
+    }
+
+    .tour-marker:hover::after {
+        border-color: #3498db;
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+            opacity: 1;
+        }
+        50% {
+            transform: scale(1.1);
+            opacity: 0.8;
+        }
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }

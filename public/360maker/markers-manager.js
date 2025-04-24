@@ -76,6 +76,14 @@ function startAddingLink(targetNodeId) {
         linkHelp.style.display = 'block';
     }
 
+    // Add click handler for the viewer container
+    if (viewer && viewer.container) {
+        // Remove any existing handler first to avoid duplicates
+        viewer.container.removeEventListener('click', handleLinkPlacement);
+        // Add the handler
+        viewer.container.addEventListener('click', handleLinkPlacement);
+    }
+
     showNotification('Click where you want to place the link marker', 'info');
 }
 
@@ -124,7 +132,12 @@ function handleLinkPlacement(event) {
     createLinkMarker(position, pendingLinkTarget);
 
     // Reset the adding state
-    toggleLinkMode(null);
+    cancelAddingLink();
+
+    // Remove the click event listener to prevent multiple markers
+    if (viewer && viewer.container) {
+        viewer.container.removeEventListener('click', handleLinkPlacement);
+    }
 
     // Save the tour
     saveTour();
@@ -153,8 +166,9 @@ function createLinkMarker(position, targetNodeId) {
         id: markerId,
         position: position,
         image: ARROW_ICON,
-        width: 32,
-        height: 32,
+        width: 32,  // Must specify width
+        height: 32, // Must specify height
+        size: { width: 32, height: 32 }, // Additional size property
         anchor: 'center',
         tooltip: `Link to node ${targetNodeId}`,
         data: {

@@ -69,6 +69,7 @@ class TourStudioController extends Controller
      */
     public function getTourData($id)
     {
+        logger($id);
         $tour = $this->tourStudioService->getTour($id);
         return response()->json($tour);
     }
@@ -85,6 +86,10 @@ class TourStudioController extends Controller
         return $this->tourStudioService->updateTour($request, $id);
     }
 
+    public function savePolygons(Request $request, $id)
+    {
+        logger($request->all());
+    }
     /**
      * Delete a specific tour.
      *

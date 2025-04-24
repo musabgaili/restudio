@@ -45,7 +45,18 @@ function setupTextHandlers() {
 
             // Add click handler for text placement
             textOverlay.addEventListener('click', handleTextPlacement);
+            console.log('Text overlay created and attached');
+        } else {
+            console.error('Cannot attach text overlay - viewer container not found');
         }
+    }
+
+    // Set up Add Text button
+    const addTextBtn = document.getElementById('addTextBtn');
+    if (addTextBtn) {
+        console.log('Add Text button found');
+    } else {
+        console.error('Add Text button not found');
     }
 }
 
@@ -125,6 +136,7 @@ function createTextMarker(text, position, style) {
         ">${text}</div>`,
         anchor: 'center',
         scale: [1, 1],
+        size: { width: 200, height: 50 },
         tooltip: 'Text element',
         data: {
             type: 'text',
@@ -155,9 +167,18 @@ function createTextMarker(text, position, style) {
  */
 function toggleTextMode() {
     isTextMode = !isTextMode;
+    console.log('Text mode toggled:', isTextMode);
 
     if (textOverlay) {
         textOverlay.style.display = isTextMode ? 'block' : 'none';
+        console.log('Text overlay display:', textOverlay.style.display);
+    } else {
+        console.error('Text overlay not initialized');
+        setupTextHandlers();
+        if (textOverlay) {
+            textOverlay.style.display = isTextMode ? 'block' : 'none';
+            console.log('Text overlay created and displayed');
+        }
     }
 
     // Show or hide text help overlay

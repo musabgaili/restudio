@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Services\VirtualTour\CreateTourService;
 
-class VirtualTourController extends Controller
+class AppVirtualTourController extends Controller
 {
 
     /**
@@ -40,7 +40,17 @@ class VirtualTourController extends Controller
     // Load a virtual tour
     public function load($id)
     {
-        $tour = VirtualTour::with(['nodes.media', 'nodes.links', 'nodes.markers'])->findOrFail($id);
+        $tour = VirtualTour::with([
+            'nodes.media',
+            'nodes.links',
+            'nodes.markers',
+            // 'nodes',
+            // 'nodes.markers',
+            'nodes.polygons',
+            'nodes.texts',
+            'nodes.fromLinks',
+            'nodes.toLinks'
+        ])->findOrFail($id);
 
         return response()->json($tour);
     }
