@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Photo Sphere Polygon Editor</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/core@5/index.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/markers-plugin@5/index.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -36,7 +38,7 @@
                             <i class="fas fa-undo"></i>
                         </button>
                         <button id="saveAllBtn" class="btn btn-primary">
-                            <i class="fas fa-save me-1"></i> Save Project
+                            <i class="fas fa-save me-1"></i> Save Drawings
                         </button>
                     </div>
                 </div>
@@ -307,6 +309,36 @@
                             // Add empty media array if missing
                             node.media = [];
                         }
+
+                        // Ensure markers array exists
+                        if (!node.markers) {
+                            node.markers = [];
+                        }
+
+                        // Process markers to ensure they have the right format
+                        node.markers = node.markers.map(marker => {
+                            // Ensure position is in the correct format
+                            if (marker.position && typeof marker.position === 'string') {
+                                try {
+                                    marker.position = JSON.parse(marker.position);
+                                    console.log(`Successfully parsed marker position for marker ${marker.id}:`, marker.position);
+                                } catch (e) {
+                                    console.warn(`Failed to parse marker position for marker ${marker.id}:`, marker.position);
+                                    // Set a default position
+                                    marker.position = { yaw: 0, pitch: 0 };
+                                }
+                            } else if (!marker.position) {
+                                console.warn(`Missing position for marker ${marker.id}, setting default`);
+                                marker.position = { yaw: 0, pitch: 0 };
+                            }
+
+                            // Ensure the marker has a target node ID
+                            if (!marker.target_node_id) {
+                                console.warn(`Marker ${marker.id} has no target_node_id`);
+                            }
+
+                            return marker;
+                        });
                     });
 
                     // Initialize the app with nodes data
@@ -345,10 +377,10 @@
                 document.getElementById('tourImageList').innerHTML = '<div class="alert alert-danger">Missing tour ID element.</div>';
             }
 
-            document.getElementById('saveAllBtn').addEventListener('click', function() {
-                console.log('Save button clicked');
-                handleSaveTours();
-            });
+            // document.getElementById('saveAllBtn').addEventListener('click', function() {
+            //     console.log('Save button clicked');
+            //     handleSaveTours();
+            // });
         });
     </script>
 </body>

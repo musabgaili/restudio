@@ -120,49 +120,24 @@ function clearAllPolygons(markersPlugin) {
 }
 
 /**
- * Restore polygons and texts for the current node
+ * Restore polygons for the current node
  * @param {string} nodeId - ID of the node
- * @param {Object} markersPlugin - Markers plugin instance
  */
-function restorePolygons(nodeId, markersPlugin) {
+function restorePolygons(nodeId) {
     if (!markersPlugin) return;
-
-    console.log(`Restoring polygons and texts for node: ${nodeId}`);
 
     // Clear existing markers
     markersPlugin.clearMarkers();
 
     // Get saved polygons for this node
     const polygons = getNodePolygons(nodeId);
-    console.log(`Found ${polygons.length} polygons for node ${nodeId}`);
 
-    // Get saved texts for this node
-    const texts = getNodeTexts(nodeId);
-    console.log(`Found ${texts.length} texts for node ${nodeId}`);
-
-    // Re-add polygons to the view
+    // Re-add them to the view
     if (polygons && polygons.length > 0) {
         polygons.forEach(polygon => {
-            try {
-                markersPlugin.addMarker(polygon);
-            } catch (e) {
-                console.error(`Error adding polygon ${polygon.id}:`, e);
-            }
+            markersPlugin.addMarker(polygon);
         });
     }
-
-    // Re-add texts to the view
-    if (texts && texts.length > 0) {
-        texts.forEach(text => {
-            try {
-                markersPlugin.addMarker(text);
-            } catch (e) {
-                console.error(`Error adding text ${text.id}:`, e);
-            }
-        });
-    }
-
-    return { polygonsCount: polygons.length, textsCount: texts.length };
 }
 
 /**

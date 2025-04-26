@@ -88,8 +88,44 @@ class TourStudioController extends Controller
 
     public function savePolygons(Request $request, $id)
     {
+        logger("Received polygon and text data for tour ID: $id");
         logger($request->all());
+
+        try {
+            // Get the tour - use the correct model namespace
+            $tour = \App\Models\Tour\VirtualTour::findOrFail($id);
+
+            // Get the nodes data from the request
+            $nodesData = $request->input('nodes', []);
+
+            // Log how many nodes we're processing
+            logger("Processing " . count($nodesData) . " nodes");
+
+            foreach ($nodesData as $nodeData) {
+                $nodeId = $nodeData['id'];
+                $polygons = $nodeData['polygons'] ?? [];
+                $texts = $nodeData['texts'] ?? [];
+
+                // Log what we found for each node
+                logger("Node $nodeId: " . count($polygons) . " polygons, " . count($texts) . " texts");
+
+                // Save the data to the database here when ready
+                // For now, we're just logging
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data received successfully. Check logs for details.'
+            ]);
+        } catch (\Exception $e) {
+            logger("Error saving polygons and texts: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error saving data: ' . $e->getMessage()
+            ], 500);
+        }
     }
+
     /**
      * Delete a specific tour.
      *

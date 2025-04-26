@@ -62,7 +62,8 @@ function changeImage(imageId, images) {
     const image = images.find(img => img.id === imageId);
     if (!image || !viewer) return;
 
-    // Don't clear polygons anymore, they're managed by restorePolygons in changeNodeImage
+    // Save current polygons before changing
+    clearAllPolygons(markersPlugin);
 
     // Change panorama
     viewer.setPanorama(image.url).then(() => {

@@ -12,7 +12,6 @@ let selectedText = null;
 let isDraggingText = false;
 let isRotatingText = false;
 let initialRotation = 0;
-let initialTextPosition = null;
 let lastMousePosition = { x: 0, y: 0 };
 let textOverlay = null; // Store reference to text overlay
 
@@ -135,31 +134,12 @@ function setupTextInteraction() {
     // Listen for marker select events for text markers
     if (markersPlugin) {
         markersPlugin.addEventListener('select-marker', (e) => {
-            // Validate marker and ensure it has the proper structure
-            if (!e.marker) {
-                console.warn('Selected marker event received but marker is undefined');
-                return;
-            }
-
-            // Log marker data for debugging
-            console.log('Marker selected:', {
-                id: e.marker.id,
-                type: e.marker.data?.type,
-                hasPosition: !!e.marker.position,
-                position: e.marker.position
-            });
-
-            // Check if it's a text marker
-            if (e.marker.data && e.marker.data.type === 'text') {
-                // Store the selected text marker
+            if (e.marker && e.marker.data && e.marker.data.type === 'text') {
                 selectedText = e.marker;
 
                 // Only show dragging controls if not in text mode
                 if (!isTextMode) {
-                    // Short timeout to ensure the viewer has finished processing the marker selection
-                    setTimeout(() => {
-                        showTextInteractionControls(true);
-                    }, 50);
+                    showTextInteractionControls(true);
                 }
             }
         });
@@ -176,11 +156,6 @@ function setupTextInteraction() {
         viewer.container.addEventListener('mousemove', handleTextInteraction);
         viewer.container.addEventListener('mouseup', handleTextInteractionEnd);
         viewer.container.addEventListener('mouseleave', handleTextInteractionEnd);
-
-        // Add event listeners to reposition controls when the viewer moves
-        viewer.addEventListener('position-updated', updateControlsPosition);
-        viewer.addEventListener('zoom-updated', updateControlsPosition);
-        viewer.addEventListener('size-updated', updateControlsPosition);
     }
 }
 
@@ -196,79 +171,52 @@ function showTextInteractionControls(show) {
     }
 
     if (show && selectedText) {
-        // Log selected text details for debugging
-        console.log('Selected text for controls:', {
-            id: selectedText.id,
-            hasPosition: !!selectedText.position,
-            position: selectedText.position
-        });
-
         // Create controls element
         const controls = document.createElement('div');
         controls.id = 'textControls';
         controls.className = 'text-interaction-controls';
         controls.innerHTML = `
-            <div class="text-control-button drag-button" title="Drag Text (Click and hold to drag)">
+            <div class="text-control-button drag-button" title="Drag Text">
                 <i class="fas fa-arrows-alt"></i>
             </div>
-            <div class="text-control-button rotate-button" title="Rotate Text (Click to rotate 10° or hold to rotate freely)">
+            <div class="text-control-button rotate-button" title="Rotate Text">
                 <i class="fas fa-sync-alt"></i>
             </div>
         `;
         document.body.appendChild(controls);
 
-        // Position the controls near the selected text marker (not following the mouse)
-        positionControlsNearText(selectedText);
+        // Position near the cursor
+        document.addEventListener('mousemove', positionTextControls);
 
         // Add event listeners to the buttons
         const dragButton = controls.querySelector('.drag-button');
         const rotateButton = controls.querySelector('.rotate-button');
 
         if (dragButton) {
-            // Enable drag mode on mouse down
-            dragButton.addEventListener('mousedown', (e) => {
-                // Set mode to dragging
+            dragButton.addEventListener('click', (e) => {
                 isDraggingText = true;
                 isRotatingText = false;
-
-                // Change cursor to indicate drag mode
                 viewer.container.style.cursor = 'move';
-
-                // Store current text attributes for later comparison to detect changes
-                initialTextPosition = selectedText.position;
-
-                // Prevent event propagation to avoid panorama movement
                 e.stopPropagation();
             });
         }
 
         if (rotateButton) {
-            // Enable single click rotate (10° increment)
             rotateButton.addEventListener('click', (e) => {
-                rotateTextBy10Degrees();
-                e.stopPropagation();
-            });
-
-            // Enable free rotation on mouse down and hold
-            rotateButton.addEventListener('mousedown', (e) => {
-                // Set mode to rotating
                 isRotatingText = true;
                 isDraggingText = false;
+                viewer.container.style.cursor = 'crosshair';
 
-                // Change cursor to indicate rotation mode
-                viewer.container.style.cursor = 'grab';
+                // Store initial rotation
+                initialRotation = selectedText.data.rotation || 0;
 
-                // Store initial rotation for continuous rotation calculation
-                initialRotation = selectedText.data?.rotation || 0;
-
-                // Store the current mouse position as reference for rotation calculation
+                // Store initial mouse position
                 const rect = viewer.container.getBoundingClientRect();
                 lastMousePosition = {
                     x: e.clientX - rect.left,
                     y: e.clientY - rect.top
                 };
 
-                // Prevent event propagation to avoid panorama movement
                 e.stopPropagation();
             });
         }
@@ -276,139 +224,14 @@ function showTextInteractionControls(show) {
 }
 
 /**
- * Position the controls near the selected text marker
- * @param {Object} textMarker - The selected text marker
- */
-function positionControlsNearText(textMarker) {
-    const controls = document.getElementById('textControls');
-    if (!controls || !textMarker || !viewer) return;
-
-    try {
-        // Get the viewer container dimensions
-        const container = viewer.container;
-        const rect = container.getBoundingClientRect();
-
-        // Check if the text marker has valid position data
-        if (!textMarker.position || typeof textMarker.position.yaw === 'undefined' || typeof textMarker.position.pitch === 'undefined') {
-            console.warn('Text marker has invalid position data, using fallback positioning');
-            useFallbackPositioning(controls, rect);
-            return;
-        }
-
-        // Convert the text marker's spherical position to viewer coordinates
-        const viewerPos = viewer.dataHelper.sphericalCoordsToViewerCoords(textMarker.position);
-
-        if (!viewerPos) {
-            console.warn('Failed to convert spherical coordinates to viewer coordinates, using fallback positioning');
-            useFallbackPositioning(controls, rect);
-            return;
-        }
-
-        // Convert viewer coordinates to screen coordinates
-        const screenX = viewerPos.x * rect.width / viewer.getSize().width + rect.left;
-        const screenY = viewerPos.y * rect.height / viewer.getSize().height + rect.top;
-
-        // Position controls above the text
-        // Since we're using transform: translate(-50%, 0) in CSS, we position at the exact X coordinate
-        // and offset Y to ensure they don't obstruct the text (60px above the text)
-        controls.style.left = `${screenX}px`;
-        controls.style.top = `${screenY - 60}px`;
-    } catch (error) {
-        console.error('Error positioning controls:', error);
-        // Use fallback positioning if anything goes wrong
-        const rect = viewer.container.getBoundingClientRect();
-        useFallbackPositioning(controls, rect);
-    }
-}
-
-/**
- * Fallback method to position controls if the normal method fails
- * @param {HTMLElement} controls - The controls element
- * @param {DOMRect} rect - The viewer container rect
- */
-function useFallbackPositioning(controls, rect) {
-    // Position controls in the center top of the viewer
-    controls.style.left = `${rect.left + rect.width / 2}px`;
-    controls.style.top = `${rect.top + 60}px`; // 60px from the top
-}
-
-/**
- * Handle text marker selection updates by repositioning controls
- * This should be called when the viewer moves or zooms
- */
-function updateControlsPosition() {
-    if (selectedText) {
-        positionControlsNearText(selectedText);
-    }
-}
-
-/**
- * Rotate text by 10 degrees clockwise
- * Used for quick adjustments when user clicks the rotate button
- */
-function rotateTextBy10Degrees() {
-    if (!selectedText) return;
-
-    // Get current rotation or default to 0
-    const currentRotation = selectedText.data?.rotation || 0;
-
-    // Calculate new rotation (add 10 degrees)
-    const newRotation = (currentRotation + 10) % 360;
-
-    // Apply the rotation to the text
-    applyTextRotation(newRotation);
-}
-
-/**
- * Apply rotation to the selected text
- * @param {number} rotation - Rotation in degrees
- */
-function applyTextRotation(rotation) {
-    if (!selectedText) return;
-
-    // Create updated HTML with rotation
-    const updatedHTML = createTextMarkerHTML(
-        selectedText.data.content,
-        selectedText.data.styles,
-        rotation,
-        selectedText.data.backgroundColor,
-        selectedText.data.transparentBg
-    );
-
-    // Update the marker with new rotation
-    const updatedText = {
-        ...selectedText,
-        html: updatedHTML,
-        data: {
-            ...selectedText.data,
-            rotation: rotation
-        }
-    };
-
-    // Update marker in view
-    markersPlugin.updateMarker(updatedText);
-
-    // Update in storage
-    updateTextInNode(getCurrentNodeId(), selectedText.id, {
-        data: {
-            ...selectedText.data,
-            rotation: rotation
-        }
-    });
-
-    // Update selected text reference
-    selectedText = updatedText;
-}
-
-/**
- * Position the text controls near the cursor (deprecated - no longer used)
+ * Position text interaction controls near the cursor
  * @param {MouseEvent} e - Mouse event
  */
 function positionTextControls(e) {
-    // This function is no longer used for following the cursor
-    // Kept for compatibility but now redirects to the fixed positioning function
-    if (selectedText) {
-        positionControlsNearText(selectedText);
+    const controls = document.getElementById('textControls');
+    if (controls) {
+        controls.style.left = (e.clientX + 15) + 'px';
+        controls.style.top = (e.clientY + 15) + 'px';
     }
 }
 
@@ -417,13 +240,12 @@ function positionTextControls(e) {
  * @param {MouseEvent} e - Mouse event
  */
 function handleTextInteractionStart(e) {
-    // Skip if text mode is active, no text is selected, or no interaction mode is active
     if (isTextMode || !selectedText || (!isDraggingText && !isRotatingText)) return;
 
-    // Stop any ongoing viewer animation to prevent conflicts
+    // If we're starting an interaction, stop the viewer from moving
     viewer.stopAnimation();
 
-    // Store initial mouse position for rotation calculations
+    // Store initial mouse position for rotation
     if (isRotatingText) {
         const rect = viewer.container.getBoundingClientRect();
         lastMousePosition = {
@@ -432,22 +254,22 @@ function handleTextInteractionStart(e) {
         };
     }
 
-    // Prevent default viewer behavior (panorama movement)
+    // Prevent default viewer behavior
     e.stopPropagation();
 }
 
 /**
- * Handle text interaction movement (drag or rotate)
+ * Handle text interaction (drag or rotate)
  * @param {MouseEvent} e - Mouse event
  */
 function handleTextInteraction(e) {
     if (!selectedText) return;
 
     if (isDraggingText) {
-        // Handle text dragging when in drag mode
+        // Handle text dragging
         handleTextDrag(e);
     } else if (isRotatingText) {
-        // Handle text rotation when in rotate mode
+        // Handle text rotation
         handleTextRotation(e);
     }
 }
@@ -457,29 +279,26 @@ function handleTextInteraction(e) {
  * @param {MouseEvent} e - Mouse event
  */
 function handleTextDrag(e) {
-    // Skip if not in dragging mode or no text is selected
     if (!isDraggingText || !selectedText) return;
 
-    // Calculate new position based on mouse coordinates
+    // Calculate new position
     const rect = viewer.container.getBoundingClientRect();
     const size = viewer.getSize();
 
-    // Convert mouse position to viewer coordinates
     const x = (e.clientX - rect.left) * size.width / rect.width;
     const y = (e.clientY - rect.top) * size.height / rect.height;
 
-    // Convert viewer coordinates to spherical coordinates
     const newPosition = viewer.dataHelper.viewerCoordsToSphericalCoords({ x, y });
 
     if (!newPosition) return;
 
-    // Create updated text marker with new position
+    // Update the text position
     const updatedText = {
         ...selectedText,
         position: newPosition
     };
 
-    // Update marker in view
+    // Update in view
     markersPlugin.updateMarker(updatedText);
 
     // Update in storage
@@ -498,29 +317,27 @@ function handleTextDrag(e) {
  * @param {MouseEvent} e - Mouse event
  */
 function handleTextRotation(e) {
-    // Skip if not in rotation mode or no text is selected
     if (!isRotatingText || !selectedText) return;
 
-    // Calculate rotation based on mouse movement relative to viewer center
+    // Calculate rotation based on mouse movement
     const rect = viewer.container.getBoundingClientRect();
     const currentPosition = {
         x: e.clientX - rect.left,
         y: e.clientY - rect.top
     };
 
-    // Calculate center of the viewer
+    // Calculate relative positions to center of viewer
     const viewerCenter = {
         x: rect.width / 2,
         y: rect.height / 2
     };
 
-    // Get angle between initial position and center
+    // Get angle between initial and current position
     const initialAngle = Math.atan2(
         lastMousePosition.y - viewerCenter.y,
         lastMousePosition.x - viewerCenter.x
     );
 
-    // Get angle between current position and center
     const currentAngle = Math.atan2(
         currentPosition.y - viewerCenter.y,
         currentPosition.x - viewerCenter.x
@@ -530,12 +347,74 @@ function handleTextRotation(e) {
     const rotationChange = (currentAngle - initialAngle) * (180 / Math.PI);
     const newRotation = (initialRotation + rotationChange) % 360;
 
-    // Apply the rotation
-    applyTextRotation(newRotation);
+    // Update the text rotation
+    const rotation = newRotation;
+
+    // Create updated HTML with rotation
+    const updatedHTML = createTextMarkerHTML(
+        selectedText.data.content,
+        selectedText.data.styles,
+        rotation,
+        selectedText.data.backgroundColor,
+        selectedText.data.transparentBg
+    );
+
+    // Update the marker
+    const updatedText = {
+        ...selectedText,
+        html: updatedHTML,
+        data: {
+            ...selectedText.data,
+            rotation: rotation
+        }
+    };
+
+    // Update in view
+    markersPlugin.updateMarker(updatedText);
+
+    // Update in storage
+    updateTextInNode(getCurrentNodeId(), selectedText.id, {
+        html: updatedHTML,
+        data: {
+            ...selectedText.data,
+            rotation: rotation
+        }
+    });
+
+    // Update selected text reference
+    selectedText = updatedText;
 
     // Prevent panorama movement
     e.stopPropagation();
     e.preventDefault();
+}
+
+/**
+ * Update a text marker in the node data
+ * @param {string} nodeId - ID of the node
+ * @param {string} textId - ID of the text
+ * @param {Object} updates - Object with properties to update
+ */
+function updateTextInNode(nodeId, textId, updates) {
+    const node = window.getNodes().find(node => node.id === nodeId);
+    if (!node || !node.texts) return;
+
+    const textIndex = node.texts.findIndex(text => text.id === textId);
+    if (textIndex === -1) return;
+
+    // Update the text marker
+    node.texts[textIndex] = {
+        ...node.texts[textIndex],
+        ...updates
+    };
+
+    // If updating nested properties like data, merge them
+    if (updates.data) {
+        node.texts[textIndex].data = {
+            ...node.texts[textIndex].data,
+            ...updates.data
+        };
+    }
 }
 
 /**
@@ -544,11 +423,8 @@ function handleTextRotation(e) {
 function handleTextInteractionEnd() {
     if (!selectedText) return;
 
-    // Reset interaction states
     isDraggingText = false;
     isRotatingText = false;
-
-    // Reset cursor to default
     viewer.container.style.cursor = '';
 }
 
@@ -759,12 +635,6 @@ function addTextMarker(text, position, styles, rotation = 0, backgroundColor = '
     const nodeId = getCurrentNodeId();
     if (!nodeId) return;
 
-    // Ensure position has valid yaw and pitch values
-    const validPosition = {
-        yaw: position?.yaw || 0,
-        pitch: position?.pitch || 0
-    };
-
     const textId = `text-${generateUniqueId()}`;
 
     // Create HTML content for text
@@ -773,7 +643,7 @@ function addTextMarker(text, position, styles, rotation = 0, backgroundColor = '
     // Create marker data
     const markerData = {
         id: textId,
-        position: validPosition,  // Use validated position
+        position: position,
         html: content,
         scale: [1, 1],
         tooltip: text,
@@ -787,13 +657,6 @@ function addTextMarker(text, position, styles, rotation = 0, backgroundColor = '
             createdAt: new Date().toISOString()
         }
     };
-
-    // Log the marker data for debugging
-    console.log('Adding text marker:', {
-        id: textId,
-        position: validPosition,
-        hasPosition: true
-    });
 
     // Add marker to view
     markersPlugin.addMarker(markerData);
@@ -889,39 +752,10 @@ function undoLastTextAction() {
     return false;
 }
 
-/**
- * Update a text marker in the node data
- * @param {string} nodeId - ID of the node
- * @param {string} textId - ID of the text
- * @param {Object} updates - Object with properties to update
- */
-function updateTextInNode(nodeId, textId, updates) {
-    const node = window.getNodes().find(node => node.id === nodeId);
-    if (!node || !node.texts) return;
-
-    const textIndex = node.texts.findIndex(text => text.id === textId);
-    if (textIndex === -1) return;
-
-    // Update the text marker
-    node.texts[textIndex] = {
-        ...node.texts[textIndex],
-        ...updates
-    };
-
-    // If updating nested properties like data, merge them
-    if (updates.data) {
-        node.texts[textIndex].data = {
-            ...node.texts[textIndex].data,
-            ...updates.data
-        };
-    }
-}
-
 export {
     initializeTextManager,
     toggleTextMode,
     addTextMarker,
     isInTextMode,
-    undoLastTextAction,
-    updateControlsPosition
+    undoLastTextAction
 };
