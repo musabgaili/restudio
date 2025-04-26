@@ -381,6 +381,7 @@
             //     console.log('Save button clicked');
             //     handleSaveTours();
             // });
+            // yameti kudasai
         });
     </script>
 </body>
